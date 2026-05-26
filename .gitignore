@@ -1,0 +1,58 @@
+# N225BrokerBridge-public — 配布リポジトリ用 .gitignore
+#
+# 開発フォルダの sync_to_public.ps1 が allowlist で既に除外していますが、
+# 二重ガードとしてここでも明示的に除外します。
+
+# === Secrets / 個人情報 (絶対に含めない) ===
+*.Local.json
+appsettings.Local.json
+*.pfx
+*.p12
+*.key
+secrets.json
+.env
+.env.local
+
+# === ログ・実行履歴 ===
+logs/
+*.log
+cloudflared*.log
+
+# === Claude メモリ / 開発記録 ===
+memory/
+**/memory/
+docs/devlog/
+**/devlog/
+
+# === LLM 分析結果 (個人判断履歴) ===
+analyses/*.md
+results/
+reviews/
+
+# === 履歴データ / スクリーンショット ===
+history_csv/
+screenshots/
+
+# === ビルド成果物 ===
+bin/
+obj/
+*.pyc
+__pycache__/
+.venv/
+venv/
+
+# === IDE / OS ===
+.vs/
+.vscode/settings.json
+*.suo
+*.user
+Thumbs.db
+.DS_Store
+
+# === ビジネス機密 ===
+Business/
+プライスアクション戦略調査/
+引継ぎメモデスクトップ版/
+
+# === Git ===
+.git/
