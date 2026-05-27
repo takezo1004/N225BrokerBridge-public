@@ -221,6 +221,18 @@ TradingView 戦略が発火したアラートを、**ユーザー操作なしに
 - F-17.3 `appsettings.json` (配布側) と PostConfigure でマージ
 - F-17.4 環境切替 (Production / Verification) は単一 RadioButton セット
 
+### F-18. シミュレータモード
+- F-18.1 `--simulator` 起動引数で `IBrokerAdapter` 実装を `KabuAdapter` から `MockBrokerAdapter` に DI 切替
+- F-18.2 Webhook listener (port 8001) は通常通り起動。Webhook 受信〜発注〜約定の全フローを Mock 上で再現
+- F-18.3 価格ティック (`PriceStream`) は Mock 内部で 1 秒ごとに生成 (中心値 55,600 円 ± 50 円のランダム揺らぎ)
+- F-18.4 約定タイミングは 50ms 後の即時約定。指値・逆指値の価格条件は無視
+- F-18.5 `--demo` と `--simulator` の同時指定は `--simulator` を優先 (`IsDemoMode=false` に上書き、起動ログに警告)
+- F-18.5b 手動発注ボタンは確認ダイアログ経由で Mock 上で即時約定 (本番モードと同じ UX)
+- F-18.6 永続化先 (strategies.json / auto-positions.json) は本番と分離 (詳細は [`simulator-mode.md`](./simulator-mode.md) §9-3)
+- F-18.7 UI ステータスバーに `SIMULATOR` バッジを表示
+
+詳細仕様は [`simulator-mode.md`](./simulator-mode.md) を参照。
+
 ---
 
 ## 6. 非機能要件 (Non-Functional Requirements)

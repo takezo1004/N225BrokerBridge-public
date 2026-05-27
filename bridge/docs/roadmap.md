@@ -178,14 +178,13 @@ WPF Fluent / Mica テーマで 1px 線が物理的に複数ピクセル幅にレ
 
 ---
 
-### 4.2 検証ポート専用のサンプルデータ注入 (優先度: 低)
-**現状**: kabu 検証ポートは /positions, /orders とも常に空配列を返す → UI 一覧の動作確認ができない。
+### 4.2 ✅ シミュレータモードで代替実装 (2026-05-27 設計確定、実装着手中)
+**旧記載**: 検証ポート専用のサンプルデータ注入 (優先度: 低)。kabu 検証ポートは /positions, /orders とも常に空配列を返す → UI 一覧の動作確認ができない。当初案は「`_orderMetaStore` から擬似 OrderSnapshot を生成して MainViewModel に流し込む Mock Data Injector」。
 
-**将来案**:
-- 検証ポート使用時のみ、`_orderMetaStore` から擬似 OrderSnapshot を生成して MainViewModel に流し込む「Mock Data Injector」
-- Webhook 経由で疑似データを流すテストハーネス
+**新方針**: `IBrokerAdapter` レベルで `MockBrokerAdapter` を作り、`--simulator` 起動引数で DI 切替する設計に発展。検証ポートに依存せず、kabu Station 未起動でも全フローが動く。
 
-**着手条件**: 検証ポートでの UI 動作確認が頻繁に必要になった時。
+**詳細仕様**: [`simulator-mode.md`](./simulator-mode.md)
+**追加要件**: F-18 (requirements.md §5)
 
 ---
 

@@ -23,6 +23,13 @@ public partial class MainWindow : FluentWindow
         _services = services;
         _layoutStore = layoutStore;
 
+        // シミュレータモードバッジ (--simulator 起動時のみ表示)
+        if (App.IsSimulatorMode)
+        {
+            SimulatorBadge.Visibility = Visibility.Visible;
+            Title = "N225 Broker Bridge — SIMULATOR";
+        }
+
         // 最大化/復元アイコンを WindowState に応じて切替 (Windows 標準動作)
         //   通常時:  E922 (□ 最大化)
         //   最大化中: E923 (❐ 復元)

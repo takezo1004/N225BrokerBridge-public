@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using N225BrokerBridge.Application.DI;
 using N225BrokerBridge.Infrastructure.Brokers.Kabu;
+using N225BrokerBridge.Infrastructure.Brokers.Mock;
 using N225BrokerBridge.Infrastructure.DI;
 using N225BrokerBridge.Infrastructure.Webhooks;
 using N225BrokerBridge.UI.Services;
@@ -49,15 +50,39 @@ public partial class App : System.Windows.Application
     /// </summary>
     public static bool IsDemoMode { get; private set; }
 
+    /// <summary>
+    /// シミュレータモードフラグ。<c>N225BrokerBridge.UI.exe --simulator</c> 形式で起動した時のみ true。
+    ///
+    /// === シミュレータモードとは ===
+    /// kabu Station にも本物の TradingView にも繋がず、ブリッジの全フロー
+    /// (Webhook 受信 → 発注 → 約定 → 建玉計上 → 返済) を実際に動かして体験できるモード。
+    /// IBrokerAdapter 実装を KabuAdapter から MockBrokerAdapter に DI で差し替える。
+    ///
+    /// 詳細仕様は docs/simulator-mode.md。
+    ///
+    /// === デモモードとの違い ===
+    /// - --demo: バックグラウンドサービスを起動しない (UI 表示のみ、Webhook 受信不可)
+    /// - --simulator: バックグラウンドサービスは起動 + 外部接続のみ Mock 化
+    ///
+    /// === 同時指定時の挙動 ===
+    /// --demo と --simulator を両方指定したら --simulator を優先 (IsDemoMode を false に上書き)。
+    /// </summary>
+    public static bool IsSimulatorMode { get; private set; }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        // ★ デモモード判定 ★
-        // exe 起動引数に "--demo" (大文字小文字問わず) が含まれていればデモモードを有効化。
-        // ここを通った後の処理は IsDemoMode の値に応じて分岐する。
-        // 通常起動 (引数なし) では false のまま → 既存挙動を維持。
-        IsDemoMode = e.Args.Any(a => string.Equals(a, "--demo", StringComparison.OrdinalIgnoreCase));
+        // ★ モード判定 ★
+        // exe 起動引数に "--demo" / "--simulator" (大文字小文字問わず) が含まれているか確認。
+        // 通常起動 (引数なし) では両方 false → 既存の本番挙動を維持。
+        IsDemoMode      = e.Args.Any(a => string.Equals(a, "--demo",      StringComparison.OrdinalIgnoreCase));
+        IsSimulatorMode = e.Args.Any(a => string.Equals(a, "--simulator", StringComparison.OrdinalIgnoreCase));
+        // 同時指定は --simulator 優先 (docs/simulator-mode.md §15 #7 で確定)
+        if (IsDemoMode && IsSimulatorMode)
+        {
+            IsDemoMode = false;
+        }
 
         // 例外を握りつぶさないグローバルハンドラ
         DispatcherUnhandledException += (_, ev) =>
@@ -117,9 +142,20 @@ public partial class App : System.Windows.Application
         Log.Information("N225BrokerBridge 起動を開始します。 ログ保存先={LogDir}", logDir);
         Log.Information("====================================================");
 
+        if (IsSimulatorMode)
+        {
+            Log.Information("####################################################");
+            Log.Information("# シミュレータモード (--simulator) で起動します。       ");
+            Log.Information("# kabu API には接続しません (MockBrokerAdapter 使用)。 ");
+            Log.Information("# 永続化先は *.simulator.json で本番と分離されます。   ");
+            Log.Information("# 詳細仕様: docs/simulator-mode.md                    ");
+            Log.Information("####################################################");
+        }
+
         // 機密設定は %LOCALAPPDATA% から DPAPI 復号して読み込み
+        // シミュレータモードでは appsettings.Local.simulator.json から読み込み (本番と分離)
         Log.Information("ローカル設定を読み込み中 (DPAPI 暗号化)...");
-        var localSettingsStore = new LocalSettingsStore();
+        var localSettingsStore = new LocalSettingsStore(BrokerBridgePersistencePaths.LocalSettings(IsSimulatorMode));
         var localSettings = localSettingsStore.Load();
         var kabuEnv = localSettings.KabuEnvironment ?? KabuEnvironments.Production;
         var envLabel = kabuEnv == KabuEnvironments.Verification ? "検証 (18081)" : "本番 (18080)";
@@ -177,8 +213,16 @@ public partial class App : System.Windows.Application
                 });
 
                 services.AddBrokerBridgeApplication(localSettings.WebhookPassphrase);
-                services.AddBrokerBridgeInfrastructure();
-                services.AddBrokerBridgeKabu();
+                services.AddBrokerBridgeInfrastructure(simulatorMode: IsSimulatorMode);
+                if (IsSimulatorMode)
+                {
+                    // シミュレータ: Mock ブローカーで kabu 接続を完全置換
+                    services.AddBrokerBridgeMockBroker();
+                }
+                else
+                {
+                    services.AddBrokerBridgeKabu();
+                }
                 services.AddBrokerBridgeWebhook();
 
                 services.AddSingleton(uiLogSink);
@@ -223,7 +267,9 @@ public partial class App : System.Windows.Application
         Log.Information("====================================================");
         Log.Information(IsDemoMode
             ? "N225BrokerBridge 起動完了 (デモモード)。"
-            : "N225BrokerBridge 起動完了。運用中。");
+            : (IsSimulatorMode
+                ? "N225BrokerBridge 起動完了 (シミュレータモード)。"
+                : "N225BrokerBridge 起動完了。運用中。"));
         Log.Information("====================================================");
     }
 

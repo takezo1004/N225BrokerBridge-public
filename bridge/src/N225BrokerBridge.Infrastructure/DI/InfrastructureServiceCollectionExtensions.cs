@@ -9,6 +9,7 @@ using N225BrokerBridge.Domain.Brokers;
 using N225BrokerBridge.Domain.Orders;
 using N225BrokerBridge.Domain.Positions;
 using N225BrokerBridge.Infrastructure.Brokers.Kabu;
+using N225BrokerBridge.Infrastructure.Brokers.Mock;
 using N225BrokerBridge.Infrastructure.Persistence;
 using N225BrokerBridge.Infrastructure.Strategies;
 using N225BrokerBridge.Infrastructure.Webhooks;
@@ -21,7 +22,9 @@ namespace N225BrokerBridge.Infrastructure.DI;
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
 {
-    public static IServiceCollection AddBrokerBridgeInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddBrokerBridgeInfrastructure(
+        this IServiceCollection services,
+        bool simulatorMode = false)
     {
         // 永続化 (メモリ実装、Singleton で全ライフタイム共有)
         // IPositionRepository / IOrderRepository と IPositionChangeNotifier / IOrderChangeNotifier の
@@ -34,21 +37,20 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPositionRepository>(sp => sp.GetRequiredService<InMemoryPositionRepository>());
         services.AddSingleton<IPositionChangeNotifier>(sp => sp.GetRequiredService<InMemoryPositionRepository>());
 
-        // 戦略レジストリ (JSON 永続化、デフォルトパス %LOCALAPPDATA%/N225BrokerBridge/strategies.json)
+        // 戦略レジストリ (JSON 永続化、本番は strategies.json / シミュレータは strategies.simulator.json)
+        // 詳細仕様は docs/simulator-mode.md §9-3 (A 案: 永続化分離)。
         services.AddSingleton<IStrategyRegistry>(sp => new JsonStrategyRegistry(
-            JsonStrategyRegistry.DefaultPath(),
+            BrokerBridgePersistencePaths.Strategies(simulatorMode),
             sp.GetRequiredService<ILogger<JsonStrategyRegistry>>()));
 
-        // 自動取引建玉メタデータストア (JSON 永続化、%LOCALAPPDATA%/N225BrokerBridge/auto-positions.json)
+        // 自動取引建玉メタデータストア
         services.AddSingleton<IAutoPositionMetadataStore>(sp => new JsonAutoPositionMetadataStore(
-            JsonAutoPositionMetadataStore.DefaultPath(),
+            BrokerBridgePersistencePaths.AutoPositions(simulatorMode),
             sp.GetRequiredService<ILogger<JsonAutoPositionMetadataStore>>()));
 
-        // 注文メタデータストア (JSON 永続化、%LOCALAPPDATA%/N225BrokerBridge/orders-metadata.json)
-        // 旧 N225OrderBridge の order.csv 相当。発注時に Strategy/Interval/TradeMode を保存し、
-        // 起動時の /orders 突合で UI 一覧のモード表示を復元する。
+        // 注文メタデータストア (旧 N225OrderBridge の order.csv 相当)
         services.AddSingleton<IOrderMetadataStore>(sp => new JsonOrderMetadataStore(
-            JsonOrderMetadataStore.DefaultPath(),
+            BrokerBridgePersistencePaths.OrdersMetadata(simulatorMode),
             sp.GetRequiredService<ILogger<JsonOrderMetadataStore>>()));
 
         // 約定待ち注文 ID 追跡 (旧 N225OrderBridge の OrderInquiryList 相当)
@@ -125,6 +127,21 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddHostedService(sp => sp.GetRequiredService<KabuBoardWebSocketService>());
         services.AddSingleton<IPriceUpdateNotifier>(sp => sp.GetRequiredService<KabuBoardWebSocketService>());
 
+        return services;
+    }
+
+    /// <summary>
+    /// シミュレータモード (--simulator) 用の Mock ブローカーアダプタを登録する。
+    /// kabu API クライアント・ポーリング・WebSocket は一切登録しない。
+    /// 詳細仕様は docs/simulator-mode.md を参照。
+    /// </summary>
+    public static IServiceCollection AddBrokerBridgeMockBroker(this IServiceCollection services)
+    {
+        services.AddSingleton<MockBrokerAdapter>();
+        services.AddSingleton<IBrokerAdapter>(sp => sp.GetRequiredService<MockBrokerAdapter>());
+        services.AddSingleton<IOrderSnapshotNotifier>(sp => sp.GetRequiredService<MockBrokerAdapter>());
+        services.AddSingleton<IOrderInitialFetcher>(sp => sp.GetRequiredService<MockBrokerAdapter>());
+        services.AddSingleton<IPriceUpdateNotifier>(sp => sp.GetRequiredService<MockBrokerAdapter>());
         return services;
     }
 }

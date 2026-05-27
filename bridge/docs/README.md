@@ -36,7 +36,8 @@
 | [test-spec.md](./test-spec.md) | テスト戦略・カバレッジ・主要シナリオ |
 | [operations.md](./operations.md) | 日々の起動・停止・バックアップ・障害対応 |
 | [troubleshooting.md](./troubleshooting.md) | 症状別詳細手順 |
-| [demo-mode.md](./demo-mode.md) | `--demo` 起動の仕様 |
+| [demo-mode.md](./demo-mode.md) | `--demo` 起動の仕様 (スクショ撮影専用) |
+| [simulator-mode.md](./simulator-mode.md) | `--simulator` 起動の仕様 (動作テスト・配布デモ用、MockBrokerAdapter) |
 | [roadmap.md](./roadmap.md) | 未実装機能・将来拡張 |
 
 ---
@@ -112,6 +113,7 @@
 [operations.md]     ← functional-spec.md / data-spec.md を参照
 [troubleshooting.md] ← sequence-diagrams.md / operations.md を参照
 [demo-mode.md]      ← functional-spec.md を参照
+[simulator-mode.md] ← class-design.md / domain-model.md / webhook-api-spec.md を参照
 [roadmap.md]        ← requirements.md / class-design.md を参照
 [dev-rules.md]      ← (横断、すべての設計判断の前提)
 ```

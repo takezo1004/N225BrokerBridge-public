@@ -248,15 +248,22 @@
                 </MenuItem>
             </Menu>
 
-            <!-- 中央: タイトル文字 (VS 2022 のプロジェクト名の位置) -->
-            <TextBlock Grid.Column="2" Text="N225 Broker Bridge"
-                       VerticalAlignment="Center"
-                       Margin="0,0,12,0"
-                       Foreground="White"
-                       FontFamily="Cascadia Code"
-                       FontWeight="SemiBold"
-                       FontSize="13"
-                       Opacity="0.85"/>
+            <!-- 中央: タイトル文字 (VS 2022 のプロジェクト名の位置) + シミュレータバッジ -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                <!-- シミュレータモード時のみ表示 (App.IsSimulatorMode は code-behind で設定) -->
+                <Border x:Name="SimulatorBadge" Visibility="Collapsed"
+                        Background="#E0A832" CornerRadius="4"
+                        Padding="8,2" Margin="0,0,12,0">
+                    <TextBlock Text="SIMULATOR" Foreground="#1A1A1A"
+                               FontFamily="Cascadia Code" FontWeight="Bold" FontSize="11"/>
+                </Border>
+                <TextBlock Text="N225 Broker Bridge"
+                           Foreground="White"
+                           FontFamily="Cascadia Code"
+                           FontWeight="SemiBold"
+                           FontSize="13"
+                           Opacity="0.85"/>
+            </StackPanel>
 
             <!-- 右: 最小化 / 最大化 / 閉じる -->
             <StackPanel Grid.Column="3" Orientation="Horizontal"

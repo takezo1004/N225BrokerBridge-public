@@ -1,7 +1,9 @@
 # デモモード (`--demo`)
 
-**最終更新**: 2026-05-25
+**最終更新**: 2026-05-27
 **目的**: ブログ記事/マニュアル用スクリーンショット撮影専用モード。kabu API・Webhook を一切触らずに本物の UI に決め打ちデータを表示する。
+
+> 💡 **動作テストや配布デモには `--simulator` を使うこと**。`--demo` はあくまで画面表示のみ (バックグラウンドサービスが起動しないため、Webhook 受信も手動発注もできない)。動作確認には [`simulator-mode.md`](./simulator-mode.md) を参照。
 
 ---
 
@@ -199,6 +201,7 @@ N225BrokerBridge.UI.exe --demo
 
 ## 9. 関連ドキュメント
 
+- [`simulator-mode.md`](simulator-mode.md) — `--simulator` モード (動作テスト・配布デモ用、こちらは外部接続を Mock 化したうえで全ロジックを動かす)
 - [`architecture.md`](architecture.md) — DDD 4 層構造
 - [`dev-rules.md`](dev-rules.md) — 開発ルール全般
 - [`troubleshooting.md`](troubleshooting.md) — トラブル時の診断手順

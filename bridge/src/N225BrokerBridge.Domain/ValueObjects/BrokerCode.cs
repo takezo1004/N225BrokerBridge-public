@@ -34,6 +34,9 @@ public sealed record BrokerCode
     /// <summary>楽天証券 (RSS 経由)。</summary>
     public static readonly BrokerCode Rakuten = new("rakuten");
 
+    /// <summary>シミュレータモード (--simulator) の Mock ブローカー。詳細は docs/simulator-mode.md。</summary>
+    public static readonly BrokerCode Mock = new("mock");
+
     /// <inheritdoc/>
     public override string ToString() => Value;
 }

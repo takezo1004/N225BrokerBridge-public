@@ -1128,17 +1128,21 @@ public sealed partial class MainViewModel : ObservableObject
                 var symbolLabel = !string.IsNullOrWhiteSpace(ManualOrderInstrument.DisplayName)
                     ? $"{ManualOrderInstrument.DisplayName}（{ManualOrderInstrument.ResolvedSymbolCode}）"
                     : ManualOrderInstrument.ResolvedSymbolCode;
+                var simulatorPrefix = N225BrokerBridge.UI.App.IsSimulatorMode
+                    ? "【シミュレータ】Mock ブローカーへ発注します (実発注ではありません)。\n\n"
+                    : string.Empty;
                 var message =
-                    $"以下の内容で新規発注します。よろしいですか？\n\n" +
+                    $"{simulatorPrefix}以下の内容で新規発注します。よろしいですか？\n\n" +
                     $"  サイド       : {sideLabel}\n" +
                     $"  銘柄         : {symbolLabel}\n" +
                     $"  数量         : {OrderQty} 枚\n" +
                     $"  注文タイプ   : {orderTypeLabel}\n" +
                     $"  時間条件     : {SelectedTimeInForce}\n\n" +
                     $"※確認ダイアログは [設定 → 動作] でオフにできます。";
+                var dialogTitle = N225BrokerBridge.UI.App.IsSimulatorMode ? "新規発注の確認 (シミュレータ)" : "新規発注の確認";
                 var dlg = MessageBox.Show(
                     message,
-                    "新規発注の確認",
+                    dialogTitle,
                     MessageBoxButton.OKCancel,
                     MessageBoxImage.Question,
                     MessageBoxResult.Cancel);
@@ -1295,8 +1299,11 @@ public sealed partial class MainViewModel : ObservableObject
                     ? $"{SelectedPosition.SymbolName}（{SelectedPosition.SymbolCode}）"
                     : SelectedPosition.SymbolCode;
 
+                var simulatorPrefix = N225BrokerBridge.UI.App.IsSimulatorMode
+                    ? "【シミュレータ】Mock ブローカーへ返済発注します (実発注ではありません)。\n\n"
+                    : string.Empty;
                 var message =
-                    $"以下の内容で返済発注します。よろしいですか？\n\n" +
+                    $"{simulatorPrefix}以下の内容で返済発注します。よろしいですか？\n\n" +
                     $"  建玉サイド   : {SelectedPosition.Side}建\n" +
                     $"  銘柄         : {symbolLabel}\n" +
                     $"  建玉残       : {SelectedPosition.LeaveQty} 枚\n" +
@@ -1304,9 +1311,10 @@ public sealed partial class MainViewModel : ObservableObject
                     $"  注文タイプ   : {orderTypeLabel}\n" +
                     $"  時間条件     : {SelectedTimeInForce}\n\n" +
                     $"※確認ダイアログは [設定 → 動作] でオフにできます。";
+                var dialogTitle = N225BrokerBridge.UI.App.IsSimulatorMode ? "返済発注の確認 (シミュレータ)" : "返済発注の確認";
                 var dlg = MessageBox.Show(
                     message,
-                    "返済発注の確認",
+                    dialogTitle,
                     MessageBoxButton.OKCancel,
                     MessageBoxImage.Question,
                     MessageBoxResult.Cancel);   // 既定はキャンセル (Enter 連打事故防止)
