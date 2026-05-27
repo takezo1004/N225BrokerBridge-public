@@ -26,7 +26,7 @@ kabu Station (証券口座、 localhost:18080)
 2. **動かすための装備一式 (runtime)** — Claude Code 用の命令書、対話的セットアップスクリプト、ダッシュボード、設定テンプレ等
 3. **構築の手順を解説した note 記事** — 各環境 (kabu / TV / Cloudflare) のセットアップから戦略運用までの全工程
 
-2 と 3 は **有料 note マガジン** で配布しています。コードだけでは「読める」が「動かない」設計です (購読者の Claude Code が runtime を本リポと合体させて動く状態にします)。
+2 のうち**シミュレータランタイム** (第 1〜2 話分) は **Public** で公開していて、第 1 話マガジン購入後すぐに `git clone` できます。**本番運用ランタイム** (第 3〜4 話分) は **Private**、第 3 話購入時に著者から GitHub 招待で解放されます。3 (note 記事) は購読制のマガジンです。コードだけでは「読める」が「動かない」設計です (購読者の Claude Code が runtime を本リポと合体させて動く状態にします)。
 
 ---
 
@@ -42,14 +42,14 @@ kabu Station (証券口座、 localhost:18080)
 
 | # | 話 | 内容 | 配布物 |
 |---|---|---|---|
-| 第 1 話 | 装備配布のはじまり | 前提環境の確認 / シミュレータで全員 OK | シミュレータ runtime 招待 |
+| 第 1 話 | 装備配布のはじまり | 前提環境の確認 / 新規 PC 環境構築 | (シミュレータ runtime は Public、認証不要で clone 可) |
 | 第 2 話 | シミュレータでブリッジを動かす | Mock 起動 + Webhook 7 種テスト | 上記と同じ |
-| 第 3 話 | 本物の環境を整える | kabu / TV Pro+ / Cloudflare / MCP | 本番 runtime 招待 |
+| 第 3 話 | 本物の環境を整える | kabu / TV Plus + OSE / Cloudflare / MCP | 本番 runtime (Private) GitHub 招待 |
 | 第 4 話 | 本番接続と運用開始 | 朝のルーティーン / 自動売買 ON | 上記と同じ |
 
-第 1 話購入で「**シミュレータ runtime**」リポへ招待されます。kabu 口座も TradingView Pro+ もまだ無くても、Mock ブローカーでブリッジが動くところまで体験できます。
+第 1 話購入で**シミュレータ runtime** (Public) の使い方と環境構築の知識を入手します。リポ自体は Public なのでクローンに招待不要、kabu 口座も TradingView Plus もまだ無くても、Mock ブローカーでブリッジが動くところまで体験できます。
 
-第 3 話購入で「**本番 runtime**」リポへ招待されます。本気で実運用したい方向け。
+第 3 話購入で「**本番 runtime**」(Private) リポへ招待されます。本気で実運用したい方向け。
 
 **[シーズン 2 マガジンを見る →](https://note.com/takezo75)** (公開時に更新)
 
@@ -118,7 +118,7 @@ N225BrokerBridge-public/
 | .NET 8 SDK + Desktop Runtime | ✅ |
 | Claude Code (Pro / Max) | ✅ (runtime の中核) |
 | au カブコム証券 口座 + kabu Station API 接続権 | 本番運用に必須 |
-| TradingView Pro+ (Webhook 機能) | 本番運用に必須 |
+| TradingView Plus プラン以上 + OSE データ追加購読 (Webhook 機能) | 本番運用に必須 |
 | Cloudflare アカウント + 独自ドメイン | 本番運用に必須 |
 | Python 3.10+ | dashboard / analysis 用 |
 
@@ -148,5 +148,5 @@ N225BrokerBridge-public/
 
 ---
 
-> *「コードだけ買っても、動かなければ意味がない。だから動かす方法ごと売る」*
+> *「コードだけ手にしても、動かなければ意味がない。だから動かす方法ごと渡す」*
 > ── 著者 takezo75
