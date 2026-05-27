@@ -305,20 +305,18 @@ public sealed class MockBrokerAdapter
             HoldQuantity: Quantity.Zero,
             OpenedAt: DateTime.UtcNow);
 
+        // ★ 重要: 処理順を厳守する (race condition 防止)
+        // 1) ExecutionEvent を先に発火 → ExecutionApplier が Order 集約に約定を反映
+        // 2) snapshot を Filled に更新 → SnapshotsUpdated が OrderTerminationSubscriber に到達した時点で
+        //    Order 集約は既に Filled で unfilled=0 → ApplyTerminationAsync は no-op (冪等)
+        //
+        // 逆順だと OrderTerminationSubscriber が「Filled なのに unfilled>0 = 部分約定後のキャンセル」
+        // と誤判定して Order を Cancelled マークし、後続の ExecutionEvent が
+        // "Cannot apply execution in state Cancelled" で失敗する (2026-05-27 修正)。
         lock (_stateLock)
         {
             _positions[execId] = position;
-            if (_orders.TryGetValue(orderId, out var snap))
-            {
-                _orders[orderId] = snap with
-                {
-                    State = OrderState.Filled,
-                    ExecutedQuantity = request.Quantity,
-                    Price = fillPrice
-                };
-            }
         }
-        RaiseSnapshotsUpdated();
 
         _executionStream.OnNext(new ExecutionEvent(
             BrokerCode: BrokerCode.Mock,
@@ -331,6 +329,24 @@ public sealed class MockBrokerAdapter
             Price: fillPrice,
             ExecutedAt: DateTime.UtcNow,
             TargetPositionId: null));
+
+        // ExecutionApplier は async void で実行されるため、少し待ってから snapshot を更新する。
+        // 100ms で十分 (in-memory リポジトリの更新 + イベント発火程度)。
+        await Task.Delay(100, ct);
+
+        lock (_stateLock)
+        {
+            if (_orders.TryGetValue(orderId, out var snap))
+            {
+                _orders[orderId] = snap with
+                {
+                    State = OrderState.Filled,
+                    ExecutedQuantity = request.Quantity,
+                    Price = fillPrice
+                };
+            }
+        }
+        RaiseSnapshotsUpdated();
 
         _logger.LogInformation(
             "MockBrokerAdapter NewFill OrderId={OrderId} ExecId={ExecId} price={Price}",
@@ -352,6 +368,11 @@ public sealed class MockBrokerAdapter
         var execId = NextExecutionId();
         var exitSide = request.OriginalSide.Opposite();
 
+        // ★ ScheduleNewOrderFillAsync と同じ理由で処理順を厳守 (詳細はそちらのコメント参照)。
+        // 1) Position の残量を減らす (in-memory)
+        // 2) ExecutionEvent 発火 → ExecutionApplier が Order 集約に約定を反映
+        // 3) 100ms 待機
+        // 4) snapshot を Filled にして RaiseSnapshotsUpdated
         lock (_stateLock)
         {
             if (_positions.TryGetValue(request.TargetExecutionId, out var pos))
@@ -366,17 +387,7 @@ public sealed class MockBrokerAdapter
                     _positions[request.TargetExecutionId] = pos with { LeaveQuantity = remaining };
                 }
             }
-            if (_orders.TryGetValue(orderId, out var snap))
-            {
-                _orders[orderId] = snap with
-                {
-                    State = OrderState.Filled,
-                    ExecutedQuantity = request.Quantity,
-                    Price = fillPrice
-                };
-            }
         }
-        RaiseSnapshotsUpdated();
 
         _executionStream.OnNext(new ExecutionEvent(
             BrokerCode: BrokerCode.Mock,
@@ -389,6 +400,22 @@ public sealed class MockBrokerAdapter
             Price: fillPrice,
             ExecutedAt: DateTime.UtcNow,
             TargetPositionId: request.TargetExecutionId));
+
+        await Task.Delay(100, ct);
+
+        lock (_stateLock)
+        {
+            if (_orders.TryGetValue(orderId, out var snap))
+            {
+                _orders[orderId] = snap with
+                {
+                    State = OrderState.Filled,
+                    ExecutedQuantity = request.Quantity,
+                    Price = fillPrice
+                };
+            }
+        }
+        RaiseSnapshotsUpdated();
 
         _logger.LogInformation(
             "MockBrokerAdapter ExitFill OrderId={OrderId} ExecId={ExecId} target={Target} price={Price}",
