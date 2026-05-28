@@ -151,6 +151,9 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <!-- ContentPresenter をセル幅いっぱいに広げる。これがないと中身の幅に縮み、
+                 右寄せ用 TextBlock の TextAlignment=Right が効かず左に寄って見える。 -->
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="DataGridCell">
@@ -170,15 +173,19 @@
             </Setter>
         </Style>
 
-        <!-- 数値列セル用: 右寄せ + 桁揃え monospace (価格・建値・損益・数量・足など全数値列で使用) -->
+        <!-- 数値列セル用: 右寄せ + 桁揃え monospace (価格・建値・損益・数量・足など全数値列で使用)。
+             TextBlock をセル幅いっぱいに広げ (Stretch)、TextAlignment=Right で文字を右端に揃える。
+             Consolas (等幅) と組み合わせることで下一桁が縦に揃う。 -->
         <Style x:Key="RightAlignCellStyle" TargetType="TextBlock">
-            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="TextAlignment" Value="Right"/>
             <Setter Property="FontFamily" Value="Consolas"/>
         </Style>
 
         <!-- 文字列セル用: 左寄せ (銘柄・戦略名・ID・時刻文字列・ラベルなど全テキスト列で使用) -->
         <Style x:Key="LeftAlignCellStyle" TargetType="TextBlock">
-            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="TextAlignment" Value="Left"/>
         </Style>
 
         <!-- 中央寄せ (現在は未使用。後方互換用に保持) -->

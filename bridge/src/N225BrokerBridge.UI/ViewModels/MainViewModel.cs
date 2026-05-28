@@ -67,7 +67,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     // ── 手動発注フォーム ──────────────────────────────────────
     [ObservableProperty] private InstrumentDefinition? _manualOrderInstrument;
-    [ObservableProperty] private int _orderQty = 1;
+    // ui:NumberBox.Value が double? 型のため、ViewModel 側も double で保持する。
+    // int で宣言すると double?→int の書き戻し変換が失敗し、UI で入力した枚数が反映されず
+    // 初期値 1 のまま固定される (2026-05-28 修正)。発注時に int にキャストする。
+    [ObservableProperty] private double _orderQty = 1;
     // ui:NumberBox.Value が double? 型のため、ViewModel 側も double で保持 (decimal→double 変換による
     // バインド失敗を回避)。発注時に decimal にキャストする。
     [ObservableProperty] private double _limitPrice;
@@ -1135,7 +1138,7 @@ public sealed partial class MainViewModel : ObservableObject
                     $"{simulatorPrefix}以下の内容で新規発注します。よろしいですか？\n\n" +
                     $"  サイド       : {sideLabel}\n" +
                     $"  銘柄         : {symbolLabel}\n" +
-                    $"  数量         : {OrderQty} 枚\n" +
+                    $"  数量         : {(int)OrderQty} 枚\n" +
                     $"  注文タイプ   : {orderTypeLabel}\n" +
                     $"  時間条件     : {SelectedTimeInForce}\n\n" +
                     $"※確認ダイアログは [設定 → 動作] でオフにできます。";
@@ -1159,7 +1162,7 @@ public sealed partial class MainViewModel : ObservableObject
                 TradeMode: TradeMode.Manual,
                 Symbol: new SymbolCode(ManualOrderInstrument.ResolvedSymbolCode),
                 Side: side,
-                Quantity: new Quantity(OrderQty),
+                Quantity: new Quantity((int)OrderQty),
                 OrderPrice: price,
                 OrderType: domainType,
                 TimeInForce: domainTif,
@@ -1206,7 +1209,7 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var execId = new ExecutionId(SelectedPosition.ExecutionId);
-            var closeQty = new Quantity(OrderQty);
+            var closeQty = new Quantity((int)OrderQty);
 
             // 新規発注と同じく、UI で選択中の OrderType を返済にも適用する。
             // 返済の Side は建玉と反対 (建玉 売 → 返済 買)。
