@@ -54,7 +54,7 @@ N225BrokerBridge.UI.exe --demo
 例:
 
 ```
-C:\Users\takao2\N225TradingSystem\N225BrokerBridge\src\N225BrokerBridge.UI\bin\Debug\net8.0-windows\N225BrokerBridge.UI.exe --demo
+C:\Users\<your-name>\N225BrokerBridge-public\bridge\src\N225BrokerBridge.UI\bin\Debug\net8.0-windows\N225BrokerBridge.UI.exe --demo
 ```
 
 ### 3-2. ショートカット経由
