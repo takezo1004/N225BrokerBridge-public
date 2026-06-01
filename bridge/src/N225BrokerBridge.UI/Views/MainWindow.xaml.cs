@@ -101,6 +101,43 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    // ===== 発注入力の確定 (枚数バグの恒久対策) =====
+    //
+    // WPF-UI 4.3 の NumberBox は「Enter キー」または「フォーカス喪失」でしか
+    // 入力テキストを Value プロパティに確定しない。そのため「2 と入力してそのまま
+    // 買/売/返済ボタンを押す」と、未確定のまま OrderQty=初期値1 で発注され、
+    // 2 枚以上を指定しても 1 枚しか発注されない不具合があった (2026-06-01 実機で再現)。
+    //
+    // ButtonBase.OnClick は Click イベントを Command 実行より「前」に発火させる仕様。
+    // よってこの Click ハンドラで、数量・指値・逆指値の各 NumberBox の表示テキストを
+    // 直接パースして Value を確定し、さらに BindingExpression.UpdateSource() で
+    // ViewModel へ確実に push する。これにより確定タイミング(Enter/フォーカス喪失)に
+    // 一切依存せず、表示されている値どおりに必ず発注される。
+    private void CommitOrderInputs(object sender, RoutedEventArgs e)
+    {
+        CommitNumberBox(QtyNumberBox);
+        CommitNumberBox(LimitPriceNumberBox);
+        CommitNumberBox(StopPriceNumberBox);
+    }
+
+    /// <summary>
+    /// NumberBox の表示テキストを直接パースして Value を確定し、バインド元へ即時反映する。
+    /// パース不可・空欄の場合は現在の Value を維持 (ゼロ等で上書きしない)。
+    /// 範囲外の値は NumberBox の Minimum/Maximum により別途クランプされる。
+    /// </summary>
+    private static void CommitNumberBox(Wpf.Ui.Controls.NumberBox? box)
+    {
+        if (box is null) return;
+
+        if (double.TryParse(box.Text, out var typed))
+        {
+            box.Value = typed;
+        }
+        // Value が変化しないケース (既に確定済みだがバインドが push されていない等) も
+        // 取りこぼさないよう、明示的に source へ push する。
+        box.GetBindingExpression(Wpf.Ui.Controls.NumberBox.ValueProperty)?.UpdateSource();
+    }
+
     // ===== UI レイアウト永続化 =====
     private bool _layoutApplied;
     private System.Windows.Threading.DispatcherTimer? _saveTimer;

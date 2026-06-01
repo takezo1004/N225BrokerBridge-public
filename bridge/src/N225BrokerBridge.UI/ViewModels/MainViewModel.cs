@@ -70,6 +70,10 @@ public sealed partial class MainViewModel : ObservableObject
     // ui:NumberBox.Value が double? 型のため、ViewModel 側も double で保持する。
     // int で宣言すると double?→int の書き戻し変換が失敗し、UI で入力した枚数が反映されず
     // 初期値 1 のまま固定される (2026-05-28 修正)。発注時に int にキャストする。
+    // ※ ただし WPF-UI NumberBox は Enter/フォーカス喪失でしか Value を確定しないため、
+    //   「入力 → そのままボタン押下」での取りこぼし対策が別途必要。発注ボタン押下時に
+    //   MainWindow.xaml.cs の CommitOrderInputs で表示テキストを確定 → OrderQty へ push する。
+    //   詳細は docs/troubleshooting.md §7 (2026-06-01 恒久対策)。
     [ObservableProperty] private double _orderQty = 1;
     // ui:NumberBox.Value が double? 型のため、ViewModel 側も double で保持 (decimal→double 変換による
     // バインド失敗を回避)。発注時に decimal にキャストする。

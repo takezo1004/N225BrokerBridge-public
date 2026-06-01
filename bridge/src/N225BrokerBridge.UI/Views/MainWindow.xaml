@@ -433,14 +433,16 @@
 
                         <!-- 数量 -->
                         <TextBlock Text="数量 (枚)" Margin="0,6,0,2" Opacity="0.7"/>
-                        <ui:NumberBox Value="{Binding OrderQty, Mode=TwoWay}"
+                        <ui:NumberBox x:Name="QtyNumberBox"
+                                       Value="{Binding OrderQty, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                        Minimum="1" Maximum="100" SmallChange="1"
                                        HorizontalAlignment="Stretch"/>
 
                         <!-- 指値価格: 指値選択時のみ編集可能 + 自動 CurrentPrice セット。
                              他の注文タイプ時は 0 にリセットされ、入力不可 (IsReadOnly + Opacity)。 -->
                         <TextBlock Text="指値価格" Margin="0,6,0,2" Opacity="0.7"/>
-                        <ui:NumberBox Value="{Binding LimitPrice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        <ui:NumberBox x:Name="LimitPriceNumberBox"
+                                       Value="{Binding LimitPrice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                        IsEnabled="{Binding IsLimitPriceEnabled}"
                                        IsReadOnly="{Binding IsLimitPriceReadOnly}"
                                        Opacity="{Binding LimitPriceOpacity}"
@@ -449,7 +451,8 @@
 
                         <!-- 逆指値価格: 逆指値選択時のみ編集可能。 -->
                         <TextBlock Text="逆指値価格" Margin="0,6,0,2" Opacity="0.7"/>
-                        <ui:NumberBox Value="{Binding StopPrice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        <ui:NumberBox x:Name="StopPriceNumberBox"
+                                       Value="{Binding StopPrice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                        IsEnabled="{Binding IsStopPriceEnabled}"
                                        IsReadOnly="{Binding IsStopPriceReadOnly}"
                                        Opacity="{Binding StopPriceOpacity}"
@@ -471,12 +474,14 @@
 
                             <ui:Button Grid.Row="0" Grid.Column="0"
                                         Content="買 注 文"
+                                        Click="CommitOrderInputs"
                                         Command="{Binding PlaceBuyOrderCommand}"
                                         Appearance="Primary"
                                         HorizontalAlignment="Stretch"
                                         Height="30"/>
                             <ui:Button Grid.Row="0" Grid.Column="2"
                                         Content="売 注 文"
+                                        Click="CommitOrderInputs"
                                         Command="{Binding PlaceSellOrderCommand}"
                                         Appearance="Danger"
                                         HorizontalAlignment="Stretch"
@@ -484,6 +489,7 @@
 
                             <ui:Button Grid.Row="2" Grid.Column="0"
                                         Content="返 　 済"
+                                        Click="CommitOrderInputs"
                                         Command="{Binding ExitPositionCommand}"
                                         Appearance="Secondary"
                                         HorizontalAlignment="Stretch"
