@@ -232,6 +232,8 @@ public partial class App : System.Windows.Application
                 services.AddTransient<SettingsWindow>();
                 services.AddTransient<StrategyManagerViewModel>();
                 services.AddTransient<StrategyManagerWindow>();
+                services.AddTransient<PositionHistoryViewModel>();
+                services.AddTransient<PositionHistoryWindow>();
                 services.AddSingleton<MainViewModel>();
                 services.AddSingleton<MainWindow>();
             })

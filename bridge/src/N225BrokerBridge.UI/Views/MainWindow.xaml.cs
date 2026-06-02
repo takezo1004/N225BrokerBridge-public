@@ -58,6 +58,13 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    private void OnPositionHistoryMenuClick(object sender, RoutedEventArgs e)
+    {
+        var dlg = _services.GetRequiredService<PositionHistoryWindow>();
+        dlg.Owner = this;
+        dlg.ShowDialog();
+    }
+
     private void OnExitMenuClick(object sender, RoutedEventArgs e)
     {
         Close();

@@ -47,6 +47,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly LocalSettingsStore _localSettingsStore;
     private readonly IAutoTradeGate _autoTradeGate;
     private readonly IAutoTradeInstrumentProvider _autoTradeInstrumentProvider;
+    private readonly ContractMultiplierRegistry _contractMultipliers;
     private readonly ILogger<MainViewModel> _logger;
 
     // ── ステータス ─────────────────────────────────────────────
@@ -196,6 +197,7 @@ public sealed partial class MainViewModel : ObservableObject
         LocalSettingsStore localSettingsStore,
         IAutoTradeGate autoTradeGate,
         IAutoTradeInstrumentProvider autoTradeInstrumentProvider,
+        ContractMultiplierRegistry contractMultipliers,
         ILogger<MainViewModel> logger)
     {
         _broker = broker;
@@ -211,6 +213,7 @@ public sealed partial class MainViewModel : ObservableObject
         _localSettingsStore = localSettingsStore;
         _autoTradeGate = autoTradeGate;
         _autoTradeInstrumentProvider = autoTradeInstrumentProvider;
+        _contractMultipliers = contractMultipliers;
         _logger = logger;
         LogEntries = logSink.Entries;
 
@@ -322,6 +325,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             micro.ResolvedSymbolCode = "161060023";
             micro.ContractMonth = "2026年6月限";
+            _contractMultipliers.Set(micro.ResolvedSymbolCode, micro.ProfitMultiplier);
             micro.LastPrice = 65420m;
             micro.BidPrice = 65420m;
             micro.BidQty = 0;
@@ -334,6 +338,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             mini.ResolvedSymbolCode = "161060019";
             mini.ContractMonth = "2026年6月限";
+            _contractMultipliers.Set(mini.ResolvedSymbolCode, mini.ProfitMultiplier);
             mini.LastPrice = 65420m;
             mini.BidPrice = 65420m;
             mini.AskPrice = 65415m;
@@ -541,6 +546,8 @@ public sealed partial class MainViewModel : ObservableObject
                 {
                     instrument.ResolvedSymbolCode = resolved.Symbol.Value;
                     instrument.ContractMonth = resolved.ContractMonthLabel;
+                    // 損益倍率レジストリに登録 (ポジション履歴の実現損益計算に使われる)
+                    _contractMultipliers.Set(resolved.Symbol.Value, instrument.ProfitMultiplier);
                 }
                 else
                 {

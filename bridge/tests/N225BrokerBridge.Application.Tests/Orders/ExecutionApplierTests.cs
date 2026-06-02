@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using N225BrokerBridge.Application.Common;
 using N225BrokerBridge.Application.Orders;
 using N225BrokerBridge.Application.Tests.TestDoubles;
 using N225BrokerBridge.Domain.Brokers;
@@ -16,10 +17,13 @@ public class ExecutionApplierTests
     private readonly InMemoryPositionRepository _positionRepo = new();
     private readonly StubAutoPositionMetadataStore _autoStore = new();
     private readonly StubPendingOrderTracker _pendingTracker = new();
+    private readonly StubClosedTradeStore _closedStore = new();
+    private readonly ContractMultiplierRegistry _multipliers = new();
     private readonly FixedDateTimeProvider _clock = new();
 
     private ExecutionApplier NewApplier() =>
-        new(_orderRepo, _positionRepo, _autoStore, _pendingTracker, _clock, NullLogger<ExecutionApplier>.Instance);
+        new(_orderRepo, _positionRepo, _autoStore, _pendingTracker, _closedStore, _multipliers, _clock,
+            NullLogger<ExecutionApplier>.Instance);
 
     private static readonly StrategyName Strategy = new("V7-7-fixed");
     private static readonly SymbolCode Symbol = new("OSE:NK225M1!");

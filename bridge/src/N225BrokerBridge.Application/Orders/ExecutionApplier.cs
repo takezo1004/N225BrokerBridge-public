@@ -32,6 +32,8 @@ public sealed class ExecutionApplier
     private readonly IPositionRepository _positionRepo;
     private readonly Sync.IAutoPositionMetadataStore _autoStore;
     private readonly Sync.IPendingOrderTracker _pendingTracker;
+    private readonly Sync.IClosedTradeStore _closedTradeStore;
+    private readonly IContractMultiplierResolver _multiplierResolver;
     private readonly IDateTimeProvider _clock;
     private readonly ILogger<ExecutionApplier> _logger;
 
@@ -40,6 +42,8 @@ public sealed class ExecutionApplier
         IPositionRepository positionRepo,
         Sync.IAutoPositionMetadataStore autoStore,
         Sync.IPendingOrderTracker pendingTracker,
+        Sync.IClosedTradeStore closedTradeStore,
+        IContractMultiplierResolver multiplierResolver,
         IDateTimeProvider clock,
         ILogger<ExecutionApplier> logger)
     {
@@ -47,6 +51,8 @@ public sealed class ExecutionApplier
         _positionRepo = positionRepo;
         _autoStore = autoStore;
         _pendingTracker = pendingTracker;
+        _closedTradeStore = closedTradeStore;
+        _multiplierResolver = multiplierResolver;
         _clock = clock;
         _logger = logger;
     }
@@ -234,6 +240,10 @@ public sealed class ExecutionApplier
             return;
         }
 
+        // 決済が確定した時点で、実現損益をポジション履歴に記録する (部分決済も 1 件ずつ)。
+        // 既存の建玉削除・部分更新ロジックには影響しない副作用。詳細: docs/position-history-spec.md。
+        await RecordClosedTradeAsync(position, execution, ct);
+
         if (position.IsClosed)
         {
             await _positionRepo.RemoveAsync(position.Id, ct);
@@ -247,6 +257,55 @@ public sealed class ExecutionApplier
             _logger.LogInformation(
                 "Position partially closed: id={PositionId} leave={Leave} hold={Hold}",
                 position.Id, position.LeaveQuantity, position.HoldQuantity);
+        }
+    }
+
+    /// <summary>
+    /// 決済 1 件を実現損益つきでポジション履歴に記録する。
+    /// 建値は建玉 (<paramref name="position"/>) から、返済値・枚数・時刻は返済約定
+    /// (<paramref name="execution"/>) から取る。両者はこの地点で必ず揃う。
+    /// 記録失敗は決済フロー自体を止めない (履歴は副次的)。
+    /// 計算式: (返済値 − 建値) × 売買方向 × 枚数 × 倍率。詳細: docs/position-history-spec.md §4-3。
+    /// </summary>
+    private async Task RecordClosedTradeAsync(Position position, ExecutionEvent execution, CancellationToken ct)
+    {
+        try
+        {
+            var entry = position.EntryPrice.Value;
+            var exit = execution.Price.Value;
+            var qty = execution.Quantity.Value;
+            var multiplier = _multiplierResolver.Resolve(position.Symbol.Value);
+            var sideSign = position.Side == Side.Buy ? 1m : -1m;
+            var realizedPnl = (exit - entry) * sideSign * qty * multiplier;
+
+            await _closedTradeStore.AppendAsync(new Sync.ClosedTrade
+            {
+                EntryExecutionId = position.Id.Value,
+                ExitExecutionId = execution.ExecutionId.Value,
+                BrokerCode = position.BrokerCode.Value,
+                Strategy = position.Strategy.Value,
+                Interval = position.Interval,
+                TradeMode = position.TradeMode.ToString(),
+                SymbolCode = position.Symbol.Value,
+                Side = position.Side.ToString(),
+                EntryPrice = entry,
+                ExitPrice = exit,
+                Quantity = qty,
+                ProfitMultiplier = multiplier,
+                RealizedPnl = realizedPnl,
+                OpenedAt = position.OpenedAt,
+                ClosedAt = execution.ExecutedAt,
+            }, ct);
+
+            _logger.LogInformation(
+                "ポジション履歴に記録: entry={Entry} exit={Exit} qty={Qty} pnl={Pnl} strategy={Strategy} mode={Mode}",
+                entry, exit, qty, realizedPnl, position.Strategy.Value, position.TradeMode);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "ポジション履歴の記録に失敗: position={Pos} exec={Exec} (決済処理は続行)",
+                position.Id, execution.ExecutionId);
         }
     }
 }

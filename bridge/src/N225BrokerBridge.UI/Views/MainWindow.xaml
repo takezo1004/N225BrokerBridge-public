@@ -246,6 +246,8 @@
                     <MenuItem Header="戦略管理(_M)..." Click="OnStrategyManagerMenuClick"/>
                 </MenuItem>
                 <MenuItem Header="表示(_V)">
+                    <MenuItem Header="ポジション履歴(_H)..." Click="OnPositionHistoryMenuClick"/>
+                    <Separator/>
                     <MenuItem Header="ログをクリア"/>
                     <Separator/>
                     <MenuItem Header="列幅を初期値に戻す(_W)" Click="OnResetColumnWidthsMenuClick"/>

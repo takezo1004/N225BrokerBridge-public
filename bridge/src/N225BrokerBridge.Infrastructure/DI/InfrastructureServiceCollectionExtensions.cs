@@ -53,6 +53,11 @@ public static class InfrastructureServiceCollectionExtensions
             BrokerBridgePersistencePaths.OrdersMetadata(simulatorMode),
             sp.GetRequiredService<ILogger<JsonOrderMetadataStore>>()));
 
+        // ポジション履歴ストア (決済済み実現損益・追記型)。詳細: docs/position-history-spec.md
+        services.AddSingleton<IClosedTradeStore>(sp => new JsonClosedTradeStore(
+            BrokerBridgePersistencePaths.PositionHistory(simulatorMode),
+            sp.GetRequiredService<ILogger<JsonClosedTradeStore>>()));
+
         // 約定待ち注文 ID 追跡 (旧 N225OrderBridge の OrderInquiryList 相当)
         // 発注 Accepted 時に Track、約定/取消で Untrack。Polling は Tracker が空ならネットワークを叩かない
         services.AddSingleton<IPendingOrderTracker, InMemoryPendingOrderTracker>();

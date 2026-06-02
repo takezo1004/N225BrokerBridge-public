@@ -26,6 +26,9 @@ public static class BrokerBridgePersistencePaths
     public static string OrdersMetadata(bool simulator) =>
         Path.Combine(RootDir, $"orders-metadata{Suffix(simulator)}.json");
 
+    public static string PositionHistory(bool simulator) =>
+        Path.Combine(RootDir, $"position-history{Suffix(simulator)}.json");
+
     public static string LocalSettings(bool simulator) =>
         Path.Combine(RootDir, $"appsettings.Local{Suffix(simulator)}.json");
 }
