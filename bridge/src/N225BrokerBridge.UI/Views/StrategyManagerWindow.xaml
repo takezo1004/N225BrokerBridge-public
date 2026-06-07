@@ -118,12 +118,14 @@
                 <StackPanel Grid.Row="0" Orientation="Horizontal"
                             HorizontalAlignment="Right" Margin="0,0,0,10">
                     <ui:Button Content="追　加"
+                                Click="OnCommitIntervalBeforeCommand"
                                 Command="{Binding AddCommand}"
                                 Appearance="Primary" MinWidth="80" Margin="0,0,6,0"/>
                     <ui:Button Content="編　集"
                                 Command="{Binding EditCommand}"
                                 Appearance="Secondary" MinWidth="80" Margin="0,0,6,0"/>
                     <ui:Button Content="更　新"
+                                Click="OnCommitIntervalBeforeCommand"
                                 Command="{Binding UpdateCommand}"
                                 Appearance="Primary" MinWidth="80" Margin="0,0,6,0"/>
                     <ui:Button Content="キャンセル"
@@ -159,6 +161,7 @@
 
                     <TextBlock Grid.Column="5" Text="Interval (分):" Style="{StaticResource LabelStyle}"/>
                     <ui:NumberBox Grid.Column="6"
+                                   x:Name="IntervalNumberBox"
                                    Value="{Binding EditingInterval, Mode=TwoWay}"
                                    Minimum="1" Maximum="1440" SmallChange="1"
                                    HorizontalAlignment="Stretch"/>

@@ -31,7 +31,11 @@ public sealed partial class StrategyManagerViewModel : ObservableObject
     private StrategyEditorRow? _editingTarget;
 
     [ObservableProperty] private string _editingAlertName = string.Empty;
-    [ObservableProperty] private int _editingInterval = 5;
+    // ui:NumberBox.Value が double? 型のため、ViewModel 側も double で保持する。
+    // int で宣言すると double?→int の書き戻し変換が失敗し、UI で入力した Interval が反映されず
+    // 初期値 5 のまま固定される (全戦略が「5分」になるバグ。MainViewModel.OrderQty と同一原因)。
+    // StrategyEntry へ渡す際に int にキャストする (2026-06-08 修正)。
+    [ObservableProperty] private double _editingInterval = 5;
     [ObservableProperty] private bool _editingIsEnabled;
     [ObservableProperty] private string _editingDescription = string.Empty;
 
@@ -116,10 +120,11 @@ public sealed partial class StrategyManagerViewModel : ObservableObject
             StatusMessage = "Interval は 1 以上を指定してください";
             return;
         }
+        var interval = (int)EditingInterval;
         var name = EditingAlertName.Trim();
-        if (Entries.Any(e => e.AlertName == name && e.Interval == EditingInterval))
+        if (Entries.Any(e => e.AlertName == name && e.Interval == interval))
         {
-            StatusMessage = $"既に登録済み: {name}/{EditingInterval}m";
+            StatusMessage = $"既に登録済み: {name}/{interval}m";
             return;
         }
         try
@@ -127,12 +132,12 @@ public sealed partial class StrategyManagerViewModel : ObservableObject
             await _registry.UpsertAsync(new StrategyEntry
             {
                 AlertName = name,
-                Interval = EditingInterval,
+                Interval = interval,
                 IsEnabled = EditingIsEnabled,
                 Description = EditingDescription
             });
-            StatusMessage = $"追加: {name}/{EditingInterval}m";
-            _logger.LogInformation("Strategy added: {Name}/{Interval}m", name, EditingInterval);
+            StatusMessage = $"追加: {name}/{interval}m";
+            _logger.LogInformation("Strategy added: {Name}/{Interval}m", name, interval);
             ClearFields();
             ReloadEntries();
         }
@@ -178,7 +183,7 @@ public sealed partial class StrategyManagerViewModel : ObservableObject
         var oldName = _editingTarget.AlertName;
         var oldInterval = _editingTarget.Interval;
         var newName = EditingAlertName.Trim();
-        var newInterval = EditingInterval;
+        var newInterval = (int)EditingInterval;
         var keyChanged = (oldName != newName) || (oldInterval != newInterval);
 
         if (keyChanged && Entries.Any(e => !ReferenceEquals(e, _editingTarget)

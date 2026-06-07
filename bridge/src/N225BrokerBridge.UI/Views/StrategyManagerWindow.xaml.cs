@@ -17,6 +17,22 @@ public partial class StrategyManagerWindow : FluentWindow
         _logger.LogInformation("StrategyManagerWindow opened");
     }
 
+    // WPF-UI 4.3 の NumberBox は「Enter」または「フォーカス喪失」でしか Value を確定しない。
+    // そのため Interval を入力してそのまま「追加」「更新」を押すと未確定のまま処理され、
+    // 初期値 5 のまま登録される。ButtonBase.OnClick は Command 実行より前に Click を発火させる
+    // 仕様なので、この Click ハンドラで表示テキストを確定 → BindingExpression.UpdateSource() で
+    // ViewModel へ確実に push してから AddCommand/UpdateCommand を走らせる
+    // (MainWindow.CommitNumberBox と同一の恒久対策。2026-06-08)。
+    private void OnCommitIntervalBeforeCommand(object sender, RoutedEventArgs e)
+    {
+        if (IntervalNumberBox is null) return;
+        if (double.TryParse(IntervalNumberBox.Text, out var typed))
+        {
+            IntervalNumberBox.Value = typed;
+        }
+        IntervalNumberBox.GetBindingExpression(NumberBox.ValueProperty)?.UpdateSource();
+    }
+
     private void OnCloseClicked(object sender, RoutedEventArgs e)
     {
         _logger?.LogInformation("StrategyManagerWindow: Close button clicked");
