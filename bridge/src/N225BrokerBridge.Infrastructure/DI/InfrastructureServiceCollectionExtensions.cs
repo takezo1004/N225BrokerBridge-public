@@ -75,6 +75,11 @@ public static class InfrastructureServiceCollectionExtensions
         // (これが無いと返済キャンセル時に Position の HoldQty が解放されない)
         services.AddHostedService<OrderTerminationSubscriberService>();
 
+        // 建玉の定期リコンサイル (kabu /positions を周期取得しブリッジ建玉を kabu のミラーに保つ)。
+        // SQ 限月決済・外部決済で消えた建玉をブリッジから除去し、kabu を常に正とする。
+        // 起動時 Step 3 だけでは追従できなかった「前月建玉が消えない」問題への恒久対処。
+        services.AddHostedService<PositionReconciliationService>();
+
         // ブローカーアダプタは具象を呼び出し側で登録する (KabuAdapter/RakutenAdapter 等)
 
         return services;

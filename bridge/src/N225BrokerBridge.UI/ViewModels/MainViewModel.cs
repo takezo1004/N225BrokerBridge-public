@@ -596,11 +596,15 @@ public sealed partial class MainViewModel : ObservableObject
                 row.SymbolName = ResolveSymbolDisplay(row.SymbolCode);
             foreach (var row in Orders)
             {
-                // OrderRow には SymbolCode が無いので SymbolName 自体が kabu コードのまま
-                // 残っている可能性があり、それを再ルックアップして上書きする。
-                var hit = AvailableInstruments.FirstOrDefault(i => i.ResolvedSymbolCode == row.SymbolName);
+                // 表示名がまだ kabu コードのまま残っている行を、現月コード照合で表示名に差し替える。
+                var hit = AvailableInstruments.FirstOrDefault(
+                    i => i.ResolvedSymbolCode == row.SymbolCode || i.ResolvedSymbolCode == row.SymbolName);
                 if (hit is not null) row.SymbolName = hit.DisplayName;
             }
+
+            // 限月解決が完了したので、起動時 (解決前) に投入された旧限月の建玉/注文を画面から除去する。
+            // これでライブ一覧は現月 (例: 9月限) だけになる。履歴ストアには手を付けない。
+            ApplyContractMonthScope();
         });
 
         // 場が閉まっていると WebSocket push が来ないため、起動時に /board を 1 回叩いて
@@ -651,7 +655,7 @@ public sealed partial class MainViewModel : ObservableObject
             await OnUiAsync(() =>
             {
                 Positions.Clear();
-                foreach (var p in active)
+                foreach (var p in active.Where(p => IsCurrentMonth(p.Symbol.Value)))
                     Positions.Add(ToRow(p));
             });
             _logger.LogInformation("起動時の建玉ロード完了 ({Count} 件)。", active.Count);
@@ -708,6 +712,44 @@ public sealed partial class MainViewModel : ObservableObject
         WebhookStatus = _webhookListener.IsRunning ? "受信中" : "停止中";
     }
 
+    // ── 限月スコープ (現月管理) ─────────────────────────────────
+    // ライブの建玉一覧・注文一覧は「現在解決済みの現月銘柄」だけを表示する。
+    // kabu /positions・/orders は全限月を返すため、旧限月 (前月・SQ 決済待ち等) が混ざる。
+    // 履歴 (position-history.json / orders-metadata.json) は消さず、表示だけ現月に絞る。
+
+    /// <summary>現在解決済みの現月銘柄コード集合 (Mini/Micro 等)。限月未解決時は空。</summary>
+    private HashSet<string> CurrentMonthSymbolCodes()
+        => AvailableInstruments
+            .Where(i => !string.IsNullOrEmpty(i.ResolvedSymbolCode))
+            .Select(i => i.ResolvedSymbolCode!)
+            .ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// 指定銘柄コードを現月としてライブ表示してよいか。
+    /// 限月未解決の間 (集合が空) は true (まだ絞らない。解決後に <see cref="ApplyContractMonthScope"/> で除去)。
+    /// </summary>
+    private bool IsCurrentMonth(string? symbolCode)
+    {
+        var codes = CurrentMonthSymbolCodes();
+        if (codes.Count == 0) return true;
+        return symbolCode is not null && codes.Contains(symbolCode);
+    }
+
+    /// <summary>
+    /// 限月解決の完了後に呼ぶ。建玉一覧・注文一覧から現月以外 (旧限月) の行を除去する。
+    /// 起動時 (解決前) に投入された旧限月の建玉/注文を画面から落とすため。UI スレッドで呼ぶこと。
+    /// </summary>
+    private void ApplyContractMonthScope()
+    {
+        var codes = CurrentMonthSymbolCodes();
+        if (codes.Count == 0) return;   // 未解決なら絞らない (誤って全消ししない)
+
+        foreach (var row in Positions.Where(p => !codes.Contains(p.SymbolCode)).ToList())
+            Positions.Remove(row);
+        foreach (var row in Orders.Where(o => !codes.Contains(o.SymbolCode)).ToList())
+            Orders.Remove(row);
+    }
+
     // ── 通知ハンドラ ────────────────────────────────────────────
 
     private void OnPositionChanged(object? sender, PositionChangedEventArgs e)
@@ -717,12 +759,17 @@ public sealed partial class MainViewModel : ObservableObject
             switch (e.Kind)
             {
                 case PositionChangeKind.Added when e.Position is not null:
-                    Positions.Add(ToRow(e.Position));
+                    if (IsCurrentMonth(e.Position.Symbol.Value))
+                        Positions.Add(ToRow(e.Position));
                     break;
                 case PositionChangeKind.Updated when e.Position is not null:
                 {
                     var existing = Positions.FirstOrDefault(p => p.ExecutionId == e.Position.Id.Value);
-                    if (existing is null) Positions.Add(ToRow(e.Position));
+                    if (existing is null)
+                    {
+                        if (IsCurrentMonth(e.Position.Symbol.Value))
+                            Positions.Add(ToRow(e.Position));
+                    }
                     else UpdateRow(existing, e.Position);
                     break;
                 }
@@ -752,7 +799,8 @@ public sealed partial class MainViewModel : ObservableObject
                 var existing = Orders.FirstOrDefault(o => o.OrderId == newRow.OrderId);
                 if (existing is null)
                 {
-                    Orders.Add(newRow);
+                    if (IsCurrentMonth(newRow.SymbolCode))
+                        Orders.Add(newRow);
                 }
                 else
                 {
@@ -769,6 +817,7 @@ public sealed partial class MainViewModel : ObservableObject
     private static void UpdateOrderRowInPlace(OrderRow target, OrderRow source)
     {
         target.SymbolName = source.SymbolName;
+        target.SymbolCode = source.SymbolCode;
         target.TradeMode = source.TradeMode;
         target.RecvTime = source.RecvTime;
         target.Strategy = source.Strategy;
@@ -966,6 +1015,7 @@ public sealed partial class MainViewModel : ObservableObject
         var newRow = new OrderRow
         {
             SymbolName = ResolveSymbolDisplay(order.Symbol.Value),
+            SymbolCode = order.Symbol.Value,
             TradeMode = order.TradeMode == TradeMode.Auto ? "自動" : "手動",
             RecvTime = order.CreatedAt.ToLocalTime().ToString("HH:mm:ss.fff"),
             Strategy = order.Strategy.Value,
@@ -982,7 +1032,10 @@ public sealed partial class MainViewModel : ObservableObject
         _ = OnUiAsync(() =>
         {
             var existing = Orders.FirstOrDefault(o => o.OrderId == brokerOrderId);
-            if (existing is null) Orders.Add(newRow);
+            if (existing is null)
+            {
+                if (IsCurrentMonth(newRow.SymbolCode)) Orders.Add(newRow);
+            }
             else UpdateOrderRowInPlace(existing, newRow);   // 差し替え禁止 (選択維持のため)
         });
     }
@@ -994,6 +1047,7 @@ public sealed partial class MainViewModel : ObservableObject
     private OrderRow ToRow(OrderSnapshot s, OrderMetadata? meta) => new()
     {
         SymbolName = ResolveSymbolDisplay(s.Symbol.Value),
+        SymbolCode = s.Symbol.Value,
         TradeMode = meta is null
             ? "手動"
             : (meta.TradeMode == "Auto" ? "自動" : "手動"),
@@ -1473,6 +1527,8 @@ public partial class PositionRow : ObservableObject
 public partial class OrderRow : ObservableObject
 {
     [ObservableProperty] private string _symbolName = string.Empty;
+    /// <summary>kabu の銘柄コード (限月スコープのフィルタキー)。表示名には使わない。</summary>
+    public string SymbolCode { get; set; } = string.Empty;
     [ObservableProperty] private string _tradeMode = string.Empty;
     [ObservableProperty] private string _recvTime = string.Empty;
     [ObservableProperty] private string _strategy = string.Empty;

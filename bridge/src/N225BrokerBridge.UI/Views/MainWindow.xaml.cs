@@ -222,9 +222,21 @@ public partial class MainWindow : FluentWindow
     /// <summary>現在の UI レイアウトを <see cref="UILayoutStore"/> 経由で保存。</summary>
     private void SaveUILayout()
     {
+        // 最小化中は実サイズが不定。前回の良い値を温存するため保存しない。
+        if (WindowState == WindowState.Minimized) return;
+
+        // ウィンドウサイズは ActualWidth/ActualHeight (実描画サイズ) を使う。
+        // Width/Height の依存プロパティは MinWidth/MinHeight でクランプされず、
+        // WindowStyle=None + WindowChrome のリサイズ経路でサブ最小値 (例 160x28) を
+        // 保持してしまうことがあり、それを保存すると復元時に IsValidSize で弾かれて
+        // 既定サイズへ戻ってしまう (実機で発生)。ActualWidth/Height は MinWidth でクランプ
+        // されるためこの問題が起きない。最大化中は復元サイズ (RestoreBounds) を保存する。
+        double w = WindowState == WindowState.Maximized ? RestoreBounds.Width : ActualWidth;
+        double h = WindowState == WindowState.Maximized ? RestoreBounds.Height : ActualHeight;
+
         var settings = new UILayoutSettings
         {
-            Window = new WindowLayoutEntry { Width = Width, Height = Height },
+            Window = new WindowLayoutEntry { Width = w, Height = h },
             LeftPanel = new LeftPanelLayoutEntry { Width = LeftPanelColumn?.ActualWidth ?? 0 },
             Log = new LogLayoutEntry { Height = LogRow?.ActualHeight ?? 0 },
             PositionsOrders = new PositionsOrdersLayoutEntry
