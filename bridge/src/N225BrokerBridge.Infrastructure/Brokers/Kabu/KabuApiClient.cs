@@ -119,7 +119,8 @@ public sealed class KabuApiClient
     }
 
     /// <summary>建玉一覧 /positions?product=...
-    /// 診断のため、生レスポンス body を一度ログに出してから JSON パースする。
+    /// 定期リコンサイルで頻繁に呼ばれるため、応答ログは Debug レベルに留める
+    /// (UI ログタブを埋め尽くさないため。診断時はログレベルを Debug に下げれば見られる)。
     /// </summary>
     public async Task<IReadOnlyList<KabuPositionDto>> GetPositionsAsync(CancellationToken ct = default)
     {
@@ -130,7 +131,7 @@ public sealed class KabuApiClient
 
         using var response = await _http.SendAsync(req, cts.Token);
         var body = await response.Content.ReadAsStringAsync(ct);
-        _logger.LogInformation(
+        _logger.LogDebug(
             "/positions 応答: product={Product} ステータス={Status} body長={Len}",
             _options.Product, (int)response.StatusCode, body.Length);
         if (string.IsNullOrWhiteSpace(body)) return Array.Empty<KabuPositionDto>();
