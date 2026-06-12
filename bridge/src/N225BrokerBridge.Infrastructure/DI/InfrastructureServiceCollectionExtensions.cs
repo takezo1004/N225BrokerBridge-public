@@ -137,6 +137,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddHostedService(sp => sp.GetRequiredService<KabuBoardWebSocketService>());
         services.AddSingleton<IPriceUpdateNotifier>(sp => sp.GetRequiredService<KabuBoardWebSocketService>());
 
+        // kabu board tick を AI (N225StrategyAI・127.0.0.1:5000) へ転送する追加サービス。
+        // 既存ロジック不変の純粋追加 (price stream を購読して TCP 送信するだけ)。
+        services.AddHostedService<Integration.AiTickForwarderService>();
+
         return services;
     }
 
