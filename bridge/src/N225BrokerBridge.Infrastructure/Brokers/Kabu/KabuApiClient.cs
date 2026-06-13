@@ -135,6 +135,16 @@ public sealed class KabuApiClient
             "/positions 応答: product={Product} ステータス={Status} body長={Len}",
             _options.Product, (int)response.StatusCode, body.Length);
         if (string.IsNullOrWhiteSpace(body)) return Array.Empty<KabuPositionDto>();
+        // kabu は未認証・セッション外 (kabu Station ログアウト時) などで、建玉配列でなく
+        // エラーエンベロープ {"Code":...,"Message":...} を返す (例: Code=4001007 ログイン認証エラー)。
+        // これは想定内なので、例外スタック付き警告で 30 秒ごとにログを埋めず、Debug で簡潔に記録し
+        // 空を返す (UI ログのノイズ抑制)。配列 '[' で始まらない応答＝建玉なしとして扱う。
+        if (!body.TrimStart().StartsWith('['))
+        {
+            _logger.LogDebug(
+                "/positions が建玉配列でない応答 (未認証/セッション外の想定内): body={Body}", body);
+            return Array.Empty<KabuPositionDto>();
+        }
         try
         {
             var list = System.Text.Json.JsonSerializer.Deserialize<KabuPositionDto[]>(body);
@@ -143,7 +153,7 @@ public sealed class KabuApiClient
         catch (Exception ex)
         {
             _logger.LogWarning(ex,
-                "/positions の JSON パース失敗 (配列以外が返ってきた可能性): body={Body}", body);
+                "/positions の JSON パース失敗 (配列だが解析不能): body={Body}", body);
             return Array.Empty<KabuPositionDto>();
         }
     }
