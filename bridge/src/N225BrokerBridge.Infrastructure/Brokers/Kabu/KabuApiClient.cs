@@ -158,6 +158,31 @@ public sealed class KabuApiClient
         }
     }
 
+    /// <summary>kabu /orders 応答 body を安全に注文配列へ解析する。
+    /// 未認証・セッション外 (kabu Station ログアウト時) では配列でなくエラーエンベロープ
+    /// {"Code":...,"Message":...} を返すため、配列 '[' で始まらない応答は「注文なし」として
+    /// Debug 記録し空を返す (例外/Warning スパム防止)。/positions と同方針。</summary>
+    private IReadOnlyList<KabuOrderDto> ParseOrders(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return Array.Empty<KabuOrderDto>();
+        if (!body.TrimStart().StartsWith('['))
+        {
+            _logger.LogDebug(
+                "/orders が注文配列でない応答 (未認証/セッション外の想定内): body={Body}", body);
+            return Array.Empty<KabuOrderDto>();
+        }
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<KabuOrderDto[]>(body)
+                   ?? Array.Empty<KabuOrderDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "/orders の JSON パース失敗 (配列だが解析不能): body={Body}", body);
+            return Array.Empty<KabuOrderDto>();
+        }
+    }
+
     /// <summary>注文一覧 /orders?product=...</summary>
     public async Task<IReadOnlyList<KabuOrderDto>> GetOrdersAsync(CancellationToken ct = default)
     {
@@ -167,8 +192,8 @@ public sealed class KabuApiClient
         cts.CancelAfter(TimeSpan.FromSeconds(_options.QueryTimeoutSeconds));
 
         using var response = await _http.SendAsync(req, cts.Token);
-        var list = await response.Content.ReadFromJsonAsync<KabuOrderDto[]>(cancellationToken: ct);
-        return list ?? Array.Empty<KabuOrderDto>();
+        var body = await response.Content.ReadAsStringAsync(ct);
+        return ParseOrders(body);
     }
 
     /// <summary>
@@ -184,8 +209,8 @@ public sealed class KabuApiClient
         cts.CancelAfter(TimeSpan.FromSeconds(_options.QueryTimeoutSeconds));
 
         using var response = await _http.SendAsync(req, cts.Token);
-        var list = await response.Content.ReadFromJsonAsync<KabuOrderDto[]>(cancellationToken: ct);
-        return list?.FirstOrDefault();
+        var body = await response.Content.ReadAsStringAsync(ct);
+        return ParseOrders(body).FirstOrDefault();
     }
 
     /// <summary>気配 /board/{symbol}@{exchange}</summary>
